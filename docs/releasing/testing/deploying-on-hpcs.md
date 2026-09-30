@@ -68,6 +68,7 @@ files that still must be edited manually afterward.
   overridden
 * Selects channels, package source, package MPI, and environment layout
 * Enables or disables Spack dynamically based on the chosen package variant
+* Tests the deployed environment before publishing it (see step 3 below)
 * Adds E3SM-Unified-specific environment variables through `deploy/load.sh`
 
 ### 🧪 Templates
@@ -133,6 +134,25 @@ updates.
    * Activation scripts were generated and symlinked correctly
    * Permissions have been updated successfully (read only for everyone
      except the E3SM-Unified maintainer)
+   * The environment tests passed (`All tests passed` in the log)
+
+   Before anything is published, the deployment sources the new load script
+   and runs the imports and commands from the `tests` section of the feedstock
+   recipe, with the same selectors, so a package commented out of the recipe
+   tests is skipped here too. For the `hpc` variant it also checks the tools
+   that come from Spack (NCO, ESMF and the Tempest tools) and the packages
+   installed from the `[hpc]` pins. Every failure is listed in the log, and a
+   failure stops the deployment before the load scripts are published. Pass
+   `--skip-env-tests` to publish anyway.
+
+   With `--env-layout dual`, only the environment the load script selects on
+   the node you deployed from is tested. The log gives the path of the test
+   script (`deploy_tmp/test_<load script>.sh`); run it on the other kind of
+   node as well, e.g. on a compute node:
+
+   ```bash
+   srun -N 1 -t 10:00 bash deploy_tmp/test_<load script>.sh
+   ```
 
 4. **Verify compute-node activation**
 
@@ -266,6 +286,8 @@ These are the repository-specific flags maintainers are most likely to use.
 
 * `--load-script-dir`: Write a copy of the generated load script to a specific
   directory.
+
+* `--skip-env-tests`: Publish without first testing the deployed environment.
 
 ---
 
