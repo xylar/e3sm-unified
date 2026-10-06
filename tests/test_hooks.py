@@ -7,8 +7,10 @@ import sys
 
 import jinja2
 import pytest
+import yaml
 from mache.deploy.hooks import DeployContext
 from mache.deploy.spack import _render_spack_specs
+from mache.spack.pins import load_pins
 
 
 def _load_deploy_hooks():
@@ -601,6 +603,79 @@ def test_pre_spack_uses_prefix_root_when_no_override_path(tmp_path: Path):
             'exclude_packages': ['hdf5_netcdf'],
         }
     }
+
+
+def test_config_spack_pins_are_valid():
+    config_path = Path(deploy_hooks.REPO_ROOT) / 'deploy' / 'config.yaml.j2'
+    config = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+
+    pins = load_pins([config['spack'].get('pins') or {}])
+
+    assert set(pins['repos']) == {'e3sm', 'builtin'}
+
+
+def _hpc_release_ctx(tmp_path: Path, version: str) -> DeployContext:
+    machine_cfg_path = _write_machine_cfg(
+        tmp_path,
+        group='users',
+        base_path=str(tmp_path / 'e3sm-unified'),
+        compiler='gnu',
+        mpi='openmpi',
+    )
+    ctx = _ctx(
+        tmp_path=tmp_path,
+        machine='compy',
+        machine_cfg_path=machine_cfg_path,
+    )
+    (tmp_path / 'deploy_tmp').mkdir(parents=True, exist_ok=True)
+    ctx.args.e3sm_unified_version = version
+    ctx.args.release = True
+    ctx.runtime.update(deploy_hooks.pre_pixi(ctx) or {})
+    return ctx
+
+
+@pytest.mark.parametrize('ref', [{'commit': 'abc123'}, {'branch': 'main'}])
+def test_pre_spack_release_rejects_untagged_config_pins(
+    tmp_path: Path, ref: dict
+):
+    ctx = _hpc_release_ctx(tmp_path, '1.2.3')
+    ctx.config['spack'] = {'pins': {'repos': {'e3sm': ref}}}
+
+    with pytest.raises(ValueError, match='pinned to tags'):
+        deploy_hooks.pre_spack(ctx)
+
+
+def test_pre_spack_release_rejects_untagged_cli_pins(tmp_path: Path):
+    ctx = _hpc_release_ctx(tmp_path, '1.2.3')
+    pins_path = tmp_path / 'pins.yaml'
+    pins_path.write_text(
+        'repos:\n  e3sm:\n    commit: abc123\n', encoding='utf-8'
+    )
+    ctx.args.spack_pins = str(pins_path)
+
+    with pytest.raises(ValueError, match='pinned to tags'):
+        deploy_hooks.pre_spack(ctx)
+
+
+def test_pre_spack_release_accepts_tagged_pins(tmp_path: Path):
+    ctx = _hpc_release_ctx(tmp_path, '1.2.3')
+    ctx.config['spack'] = {'pins': {'repos': {'e3sm': {'tag': 'v2099.01.0'}}}}
+
+    updates = deploy_hooks.pre_spack(ctx)
+
+    assert updates is not None
+    assert updates['spack']['deploy'] is True
+
+
+def test_pre_spack_allows_untagged_pins_for_test_deployments(tmp_path: Path):
+    ctx = _hpc_release_ctx(tmp_path, '1.2.3')
+    ctx.runtime['e3sm_unified']['release'] = False
+    ctx.config['spack'] = {'pins': {'repos': {'e3sm': {'commit': 'abc123'}}}}
+
+    updates = deploy_hooks.pre_spack(ctx)
+
+    assert updates is not None
+    assert updates['spack']['deploy'] is True
 
 
 def test_post_spack_installs_mpi4py_and_ilamb_without_rewriting_pixi(

@@ -193,6 +193,22 @@ spack:
   # [e3sm_unified] use_e3sm_hdf5_netcdf.
   exclude_packages: []
 
+  # Optional overrides for the Spack sources pinned by this mache release
+  # (mache/spack/pins.yaml): the Spack tool, the upstream spack-packages
+  # ("builtin") and E3SM's e3sm-spack-packages ("e3sm").  Each override names
+  # a tag, commit or branch for one repository and replaces the pinned ref.
+  #
+  # E3SM-Unified uses this to pick up new recipes (e.g. a new NCO version)
+  # without a new mache release.  Release candidates may pin a commit or
+  # branch; a --release deployment requires tags from E3SM-Project or spack
+  # (see docs/releasing/testing/spack-updates.md).  --spack-pins <file> on the
+  # command line takes precedence.
+  pins:
+    repos:
+      e3sm:
+        # nco 5.4.1 (E3SM-Project/e3sm-spack-packages#2), not yet tagged
+        commit: 6d619c4d54e758b361dd706ca706fcc2854b63ab
+
   # Optional spack build settings
   tmpdir: null
   mirror: null

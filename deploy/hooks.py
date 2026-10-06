@@ -17,6 +17,7 @@ from mache.deploy.bootstrap import (
     build_pixi_shell_hook_prefix,
     check_call,
 )
+from mache.spack.pins import load_pins, release_pins_are_valid
 
 if TYPE_CHECKING:
     from mache.deploy.hooks import DeployContext
@@ -197,6 +198,9 @@ def pre_spack(ctx: DeployContext) -> dict[str, Any] | None:
         }
 
     _sync_e3sm_unified_spack_machine_options(machine_config=ctx.machine_config)
+
+    if ctx.runtime.get('e3sm_unified', {}).get('release', False):
+        _check_release_spack_pins(ctx)
 
     spack_path = _resolve_spack_path(ctx)
     if spack_path is None:
@@ -769,6 +773,29 @@ def _get_prefix_root(ctx: DeployContext) -> Path | None:
             ctx.machine_config.get('e3sm_unified', 'base_path')
         )
     return None
+
+
+def _check_release_spack_pins(ctx: DeployContext) -> None:
+    # Overrides from spack.pins in deploy/config.yaml.j2 and --spack-pins,
+    # merged the same way mache does when it checks out Spack
+    overrides: list[Any] = []
+    spack_cfg = ctx.config.get('spack', {})
+    if isinstance(spack_cfg, dict) and spack_cfg.get('pins'):
+        overrides.append(spack_cfg['pins'])
+    cli_pins = getattr(ctx.args, 'spack_pins', None)
+    if cli_pins:
+        overrides.append(_abs_path(str(cli_pins)))
+    pins = load_pins(overrides)
+
+    version = str(ctx.runtime.get('project', {}).get('version', '')).strip()
+    if not release_pins_are_valid(pins, version):
+        raise ValueError(
+            f'Release deployment of E3SM-Unified {version} requires Spack '
+            'sources pinned to tags from github.com/spack or '
+            'github.com/E3SM-Project. Tag the repositories and pin the tags '
+            'in spack.pins in deploy/config.yaml.j2 (and in any '
+            '--spack-pins file).'
+        )
 
 
 def _resolve_spack_path(ctx: DeployContext) -> str | None:
