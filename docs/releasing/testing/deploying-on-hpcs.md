@@ -295,9 +295,9 @@ These are the repository-specific flags maintainers are most likely to use.
 
 * A partial deployment is expected during RC testing; not all systems must be
   built initially. Chrysalis and Perlmutter are good places to start.
-* Always ensure that the E3SM spack fork has a `spack_for_mache_<version>`
-  branch (e.g. `spack_for_mache_1.32.0`) for the version of `mache` you are
-  testing (e.g. `mache` 1.32.0rc1).
+* Make sure any Spack package versions in `deploy/pins.cfg` that the
+  `mache` release does not provide are pinned in `spack.pins` in
+  `deploy/config.yaml.j2` (see [Updating Spack Packages](spack-updates.md)).
 * Be aware of potential permission or filesystem issues when writing to
   shared software locations.
 
