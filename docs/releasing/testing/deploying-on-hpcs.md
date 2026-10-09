@@ -228,6 +228,16 @@ updates.
 
 6. **Deploy more broadly** once core systems pass testing
 
+### Driving deployments from your own computer
+
+`utils/hpc_deploy/hpc_deploy.py` runs steps 2–4 on several machines from
+your own computer, over the ssh connections you open by logging in.  It
+brings each machine's checkout to your pushed commit, and runs `./deploy.py`
+there in the background with its log in the checkout.  It then reports the
+results and submits the test script as a compute-node job.  An AI agent can
+run it, following `utils/hpc_deploy/AGENTS.md`.  See
+`utils/hpc_deploy/README.md`.
+
 ---
 
 ## Common flags
