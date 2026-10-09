@@ -104,9 +104,10 @@ echo "$checkout is at $(git log -1 --format='%h %s')"
 git submodule status
 '''
 
-# Run deploy.py in the background, in a new run directory.  deploy.py
-# replaces deploy_tmp when it next runs, so the test scripts it wrote there
-# are copied to the run directory.
+# Run deploy.py in the background, in a new run directory, with Python's
+# output unbuffered so that the log keeps up.  deploy.py replaces deploy_tmp
+# when it next runs, so the test scripts it wrote there are copied to the run
+# directory.
 SCRIPTS['start'] = r'''
 cd "$checkout" || exit 1
 for latest in deploy_runs/*/latest; do
@@ -120,7 +121,7 @@ done
 run_dir="$(pwd -P)/deploy_runs/$machine/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$run_dir" || exit 1
 ln -sfn "$(basename "$run_dir")" "deploy_runs/$machine/latest"
-setsid nohup bash -c '
+PYTHONUNBUFFERED=1 setsid nohup bash -c '
   echo $$ > "$0/pid"
   hostname > "$0/node"
   echo "hpc_deploy: running $* at $(git rev-parse HEAD) on $(hostname), $(date -u)"
