@@ -22,7 +22,7 @@ the requester cannot reach this way.
     software directories
   - `compute-test --submit`
   - pushing to the requester's repo
-  - deleting anything in the shared directories
+  - deleting anything in the shared directories, including `clean --delete`
   - passing `--recreate` to `deploy.py`
 
   Without permission, show the requester the command instead.
@@ -110,6 +110,28 @@ hpc_deploy.py compute-test <machine> [--submit]
    requester in a table: machine, commit, `deploy.py` exit code, login and
    compute test results, and load script.  For any failure, say in a
    sentence or two what failed and why you think it did.
+
+## Cleaning up testing versions
+
+Testing versions take a lot of disk space in the shared directories.  A
+testing version is one deployed without `--release`: it has a
+`test_e3sm_unified_<version>_<machine>.sh` load script or an
+`e3smu_<version>/<machine>` environment, but no
+`load_e3sm_unified_<version>_<machine>.sh`.  While testing, keep the newest
+one or two.  Once a release is deployed on a machine, delete them all.
+```bash
+hpc_deploy.py clean <machine> [--keep N] [--delete]
+```
+`clean` works in the base path that the machine's latest deploy published
+its load script to.  It lists what it would delete: the testing versions
+other than the newest `N` (2 by default; pass `--keep 0` after a release),
+and any test load script left beside a released version.  It never deletes a
+released environment or another machine's files.  It refuses to run while a
+deploy in the checkout is still going.  Show the requester the list, and
+pass `--delete` only with their permission.  Deleting an environment can take
+many minutes.
+
+## Checking a deployed environment
 
 To check something else in a deployed environment, source its load script
 in a login shell:

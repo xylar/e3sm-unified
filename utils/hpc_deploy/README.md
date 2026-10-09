@@ -11,6 +11,7 @@ hpc_deploy.py sync <machine>                 # bring the checkout to this checko
 hpc_deploy.py start <machine> [-- <options>] # run ./deploy.py --machine <machine> [<options>]
 hpc_deploy.py status <machine> [--tail N]    # running or exit code, test results, log
 hpc_deploy.py compute-test <machine> [--submit]  # run deploy.py's tests on a compute node
+hpc_deploy.py clean <machine> [--keep N] [--delete]  # delete old testing versions
 ```
 
 - **`sync`** fetches the branch from the repo it tracks, then checks out the
@@ -29,6 +30,12 @@ hpc_deploy.py compute-test <machine> [--submit]  # run deploy.py's tests on a co
   With `--submit`, it submits the job.  It takes the account, queue and
   other settings from mache's config for the machine, using the deployed
   environment's mache.
+- **`clean`** lists the machine's testing versions (deployed without
+  `--release`), other than the newest `N` (2 by default), in the base path
+  the latest deploy published to.  With `--delete`, it deletes their
+  environments and test load scripts.  It also deletes any test load
+  script left beside a released version.  After a release, use `--keep 0`.
+  It never deletes a released environment or another machine's files.
 
 ## Setup
 

@@ -226,6 +226,70 @@ echo "$output"
 echo "$output" | tail -n 1 | awk '{print $NF}' > "$run_dir/compute_job_id"
 '''
 
+# Delete this machine's testing versions in the base path the latest deploy
+# published to, except the newest few.  A testing version has a test load
+# script or an environment but no release load script.  A released version
+# keeps its environment, but loses any test load script.
+SCRIPTS['clean'] = r'''
+cd "$checkout" || exit 1
+for latest in deploy_runs/*/latest; do
+  if [ -e "$latest" ] && [ ! -f "$latest/exit_code" ]; then
+    echo "Error: $(readlink -f "$latest") has no exit code, so its deploy may"
+    echo "still be running.  Clean up once it has ended."
+    exit 1
+  fi
+done
+copy="$(sed -n 's/^Writing shared load-script copy: //p' \
+  "deploy_runs/$machine/latest/deploy.log" 2>/dev/null | tail -n 1)"
+if [ -z "$copy" ]; then
+  echo "Error: the latest deploy for $machine here published no load script,"
+  echo "so its base path is not known."
+  exit 1
+fi
+cd "$(dirname "$copy")" || exit 1
+echo "In $(pwd):"
+_remove() {
+  local path
+  for path in "$@"; do
+    [ -e "$path" ] || continue
+    if [ "$delete" = true ]; then
+      echo "  delete        $path"
+      rm -rf "$path" || exit 1
+    else
+      echo "  would delete  $path"
+    fi
+  done
+}
+versions="$( { ls test_e3sm_unified_*_"$machine".sh
+               ls -d e3smu_[0-9]*/"$machine"; } 2>/dev/null \
+  | sed -e "s/^test_e3sm_unified_\(.*\)_$machine\.sh$/\1/" \
+        -e "s|^e3smu_\(.*\)/$machine$|\1|" -e 's/_/./g' | sort -u)"
+testing=""
+for version in $versions; do
+  script="test_e3sm_unified_${version}_$machine.sh"
+  dir="e3smu_${version//./_}/$machine"
+  if [ -e "load_e3sm_unified_${version}_$machine.sh" ]; then
+    _remove "$script"
+  else
+    time="$(stat -c %Y "$script" "$dir" 2>/dev/null | sort -n | tail -n 1)"
+    testing="$testing$time $version"$'\n'
+  fi
+done
+count=0
+for version in $(printf '%s' "$testing" | sort -rn | awk '{print $2}'); do
+  count=$((count + 1))
+  if [ "$count" -le "$keep" ]; then
+    echo "  keep          $version"
+    continue
+  fi
+  _remove "test_e3sm_unified_${version}_$machine.sh" \
+    "e3smu_${version//./_}/$machine"
+  if [ "$delete" = true ]; then
+    rmdir "e3smu_${version//./_}" 2>/dev/null
+  fi
+done
+'''
+
 
 def main():
     """Run a command of the utility on a machine"""
@@ -256,14 +320,19 @@ def main():
         values['force'] = 'true' if args.force else 'false'
     elif args.command == 'status':
         values['tail'] = args.tail
+    elif args.command == 'clean':
+        values['keep'] = args.keep
+        values['delete'] = 'true' if args.delete else 'false'
     else:
         values['submit_command'] = job_commands.get(machine, '')
         values['job_command_py'] = JOB_COMMAND_PY
         values['submit_job'] = 'true' if args.submit else 'false'
-    sys.exit(_run(host, values, SCRIPTS[args.command]))
+    # deleting environments can take a long time
+    timeout = None if args.command == 'clean' else 900
+    sys.exit(_run(host, values, SCRIPTS[args.command], timeout))
 
 
-def _run(host, values, script):
+def _run(host, values, script, timeout):
     """Run a script in a login shell on a machine, returning its exit code"""
     lines = []
     for name, value in values.items():
@@ -293,10 +362,10 @@ def _run(host, values, script):
             stderr=subprocess.PIPE,
             universal_newlines=True,
             env=env,
-            timeout=900,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        sys.exit(f'Error: {host or "the script"} did not finish in 15 min.')
+        sys.exit(f'Error: {host or "the script"} did not finish in time.')
 
     output = result.stdout.partition(MARKER + '\n')[2]
     if not output and result.returncode != 0:
@@ -422,6 +491,25 @@ def _parse_args(argv):
         '--submit',
         action='store_true',
         help="Submit the job.  Agents pass this only with the requester's "
+        'permission.',
+    )
+
+    clean = subparsers.add_parser(
+        'clean',
+        parents=[common],
+        help="Show this machine's testing versions that would be deleted",
+    )
+    clean.add_argument(
+        '--keep',
+        type=int,
+        default=2,
+        help='How many of the newest testing versions to keep (default: 2), '
+        '0 after a release',
+    )
+    clean.add_argument(
+        '--delete',
+        action='store_true',
+        help="Delete them.  Agents pass this only with the requester's "
         'permission.',
     )
 
