@@ -63,10 +63,13 @@ the requester cannot reach this way.
    candidate, run this, with `<XY>` the Python version without its dot, such
    as `314`:
    ```bash
-   curl -s https://conda.anaconda.org/conda-forge/label/e3sm_unified_dev/linux-64/repodata.json \
-     | grep -o 'e3sm-unified-<version>-[a-z]*_py<XY>[^"]*' | sort -u
+   curl -s https://conda.anaconda.org/conda-forge/label/e3sm_unified_dev/linux-64/repodata.json.zst \
+     | zstd -dc | grep -o 'e3sm-unified-<version>-[a-z]*_py<XY>[^"]*' | sort -u
    ```
-   It should list an `hpc_` build and a `nompi_` build.  For a release, look
+   It should list an `hpc_` build and a `nompi_` build.  Use
+   `repodata.json.zst`, which pixi reads, not `repodata.json`: the CDN can
+   serve a copy of `repodata.json` that is days old, so new builds can be
+   missing from it long after pixi can install them.  For a release, look
    at https://anaconda.org/conda-forge/e3sm-unified/files.  If a build is
    missing, wait.  Builds can take up to an hour to appear after the
    feedstock's CI uploads them.
