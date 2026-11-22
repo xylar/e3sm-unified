@@ -470,7 +470,7 @@ def test_pre_pixi_release_rejects_local_build(tmp_path: Path):
         deploy_hooks.pre_pixi(ctx)
 
 
-def test_pre_pixi_release_rejects_mache_overrides(tmp_path: Path):
+def test_pre_pixi_release_rejects_personal_mache_fork(tmp_path: Path):
     machine_cfg_path = _write_machine_cfg(
         tmp_path,
         group='users',
@@ -484,12 +484,29 @@ def test_pre_pixi_release_rejects_mache_overrides(tmp_path: Path):
         machine_cfg_path=machine_cfg_path,
     )
     ctx.args.release = True
+    ctx.args.mache_fork = 'someone/mache'
     ctx.args.mache_branch = 'feature-branch'
 
     with pytest.raises(
-        ValueError, match='--release does not support --mache-fork/--mache-branch'
+        ValueError,
+        match='--release only supports --mache-fork E3SM-Project/mache',
     ):
         deploy_hooks.pre_pixi(ctx)
+
+
+def test_release_allows_main_mache_repo(tmp_path: Path, caplog):
+    ctx = _ctx(
+        tmp_path=tmp_path,
+        machine='compy',
+        machine_cfg_path=tmp_path / 'machine.cfg',
+    )
+    ctx.args.mache_fork = 'E3SM-Project/mache'
+    ctx.args.mache_branch = 'main'
+
+    with caplog.at_level(logging.WARNING):
+        deploy_hooks._check_release_mache_source(ctx)
+
+    assert 'main branch of E3SM-Project/mache' in caplog.text
 
 
 def test_pre_pixi_hpc_rejects_no_spack(tmp_path: Path):

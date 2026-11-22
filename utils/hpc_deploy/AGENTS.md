@@ -8,8 +8,8 @@ candidate.  Read `docs/releasing/testing/deploying-on-hpcs.md` and
 `utils/hpc_deploy/hpc_deploy.py` (below, `hpc_deploy.py`) drives
 `./deploy.py` on each machine.  By default, one agent on the requester's
 computer runs it for every machine, over ssh, through the connections the
-requester opens by logging in.  Frontier does not allow these shared
-connections, so it needs an agent on Frontier itself (see [Deploying on a
+requester opens by logging in.  Frontier and Riker do not allow these shared
+connections, so they need an agent on the machine itself (see [Deploying on a
 machine itself](#deploying-on-a-machine-itself)), as does any other machine
 the requester cannot reach this way.
 
@@ -38,9 +38,9 @@ the requester cannot reach this way.
   directories by hand.  Fix the repo on the requester's computer, with
   their agreement.  Commit the fix and push it (with permission), then sync
   and deploy again.
-- **Deploy one machine at a time per base path.**  Chrysalis, Bebop and
-  Improv share an E3SM-Unified base path, so deploy them one after
-  another.
+- **Deploy one machine at a time per base path.**  These machines share an
+  E3SM-Unified base path, so deploy each group one machine after another:
+  Chrysalis, Bebop and Improv; Frontier and Riker.
 - **Show the requester things in your reply**, in fenced code blocks: the
   config file, `status` output and your summary.  They often cannot see your
   command output.
@@ -185,6 +185,9 @@ differences:
 
 The requester says which machines to deploy on.  As of 1.14.0, Compy is left
 out until its OS is upgraded: its glibc 2.17 is too old for pixi and
-matplotlib 3.11.  Andes was decommissioned in 2026.  pm-gpu is not a separate
-deployment: Perlmutter has only pm-cpu's, since no Spack tools need anything
-on pm-gpu.
+matplotlib 3.11.  Andes was decommissioned in 2026 and replaced by Riker,
+which 1.14.0 supports only through mache from its main repo
+(`--mache-fork E3SM-Project/mache --mache-branch main`).  mache has no
+`[parallel]` section for Riker, so `compute-test` cannot make its submit
+command.  pm-gpu is not a separate deployment: Perlmutter has only pm-cpu's,
+since no Spack tools need anything on pm-gpu.

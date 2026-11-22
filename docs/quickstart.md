@@ -34,6 +34,9 @@ source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cp
 # Polaris (ALCF)
 source /lus/grand/projects/E3SMinput/soft/e3sm-unified/load_latest_e3sm_unified_polaris.sh
 
+# Riker (OLCF)
+source /ccs/proj/cli115/software/e3sm-unified/load_latest_e3sm_unified_riker.sh
+
 # Ruby
 source /usr/workspace/e3sm/apps/e3sm-unified/load_latest_e3sm_unified_ruby.sh
 ```

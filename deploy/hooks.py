@@ -36,6 +36,8 @@ GITMODULES_PATH = REPO_ROOT / '.gitmodules'
 LOCAL_CHANNEL_DIR = REPO_ROOT / 'deploy_tmp' / 'local-channel'
 VARIANT_OVERRIDE_DIR = REPO_ROOT / 'deploy_tmp' / 'variant_overrides'
 SOURCE_BUILD_DIR = REPO_ROOT / 'deploy_tmp' / 'hpc-source-builds'
+# The only repo a release may take mache from with --mache-fork
+RELEASE_MACHE_REPO = 'E3SM-Project/mache'
 
 
 def _load_shared_helpers():
@@ -118,12 +120,7 @@ def pre_pixi(ctx: DeployContext) -> dict[str, Any] | None:
             raise ValueError(
                 '--release only supports --package-source conda-forge.'
             )
-        if getattr(ctx.args, 'mache_fork', None) or getattr(
-            ctx.args, 'mache_branch', None
-        ):
-            raise ValueError(
-                '--release does not support --mache-fork/--mache-branch.'
-            )
+        _check_release_mache_source(ctx)
 
     if package_mpi == 'hpc':
         if ctx.machine is None:
@@ -892,6 +889,27 @@ def _get_prefix_root(ctx: DeployContext) -> Path | None:
             ctx.machine_config.get('e3sm_unified', 'base_path')
         )
     return None
+
+
+def _check_release_mache_source(ctx: DeployContext) -> None:
+    # A release may take mache from a branch of the main mache repo, for
+    # example to support a machine added since the pinned mache was
+    # released, but never from a personal fork
+    mache_fork = getattr(ctx.args, 'mache_fork', None)
+    mache_branch = getattr(ctx.args, 'mache_branch', None)
+    if not mache_fork and not mache_branch:
+        return
+    if mache_fork != RELEASE_MACHE_REPO:
+        raise ValueError(
+            f'--release only supports --mache-fork {RELEASE_MACHE_REPO}, '
+            f'not {mache_fork}.'
+        )
+    ctx.logger.warning(
+        'This release takes mache from the %s branch of %s, not from the '
+        'mache package pinned by E3SM-Unified.',
+        mache_branch,
+        mache_fork,
+    )
 
 
 def _check_release_spack_pins(ctx: DeployContext) -> None:

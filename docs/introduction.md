@@ -45,6 +45,7 @@ E3SM-Unified is available on many E3SM-supported systems:
 * Frontier
 * Perlmutter
 * Polaris (ALCF)
+* Riker (OLCF)
 * Ruby
 
 It can also be installed on Linux or macOS laptops for limited use (see
